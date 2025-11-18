@@ -9,6 +9,7 @@ class RekLog {
     this.retryDelay = options.retryDelay || 1000;
     this.debug = options.debug || false;
     this.environment = options.environment || process.env.NODE_ENV || 'development';
+    this.host = options.host || null;
 
     if (!apiKey) {
       throw new Error('RekLog: API key is required');
@@ -60,6 +61,7 @@ class RekLog {
       responseTime,
       statusCode: options.statusCode || 200,
       environment: options.environment || this.environment,
+      host: this.host,
       body: options.body || null,
       params: options.params || null,
       requestHeaders: options.requestHeaders || null,
@@ -139,6 +141,7 @@ class RekLog {
           responseTime,
           statusCode: res.statusCode,
           environment: self.environment,
+          host: self.host || req.get('host') || null,
           // Request body (for POST, PUT, PATCH)
           body: req.body || null,
           // Query parameters (for GET)
