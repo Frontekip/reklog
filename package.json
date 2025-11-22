@@ -1,6 +1,6 @@
 {
   "name": "reklog-request",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Request logging library for tracking API response times and performance",
   "main": "src/index.js",
   "keywords": [
