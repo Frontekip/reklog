@@ -14,9 +14,31 @@ class RekLog {
       ? options.maskFields.map(f => f.toLowerCase())
       : [];
 
+    // Endpoints to exclude from logging
+    this.excludeEndpoints = options.excludeEndpoints || [];
+
     if (!apiKey) {
       throw new Error('RekLog: API key is required');
     }
+  }
+
+  /**
+   * Check if an endpoint should be excluded from logging
+   * @param {string} endpoint - The endpoint to check
+   * @returns {boolean} True if endpoint should be excluded
+   */
+  shouldExclude(endpoint) {
+    return this.excludeEndpoints.some(excluded => {
+      // Support exact match and wildcard patterns
+      if (excluded.includes('*')) {
+        // Convert wildcard pattern to regex
+        const pattern = excluded.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(endpoint);
+      }
+      // Exact match
+      return endpoint === excluded;
+    });
   }
 
   /**
@@ -48,9 +70,17 @@ class RekLog {
    * Start tracking a request
    * @param {string} endpoint - The endpoint being called
    * @param {string} method - HTTP method (GET, POST, etc.)
-   * @returns {string} logId - Unique identifier for this log
+   * @returns {string|null} logId - Unique identifier for this log, or null if excluded
    */
   start(endpoint, method = 'GET') {
+    // Check if endpoint should be excluded
+    if (this.shouldExclude(endpoint)) {
+      if (this.debug) {
+        console.log(`RekLog: Skipping excluded endpoint: ${endpoint}`);
+      }
+      return null;
+    }
+
     const logId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = performance.now();
 
@@ -65,10 +95,15 @@ class RekLog {
 
   /**
    * End tracking a request and send log to server
-   * @param {string} logId - The log identifier from start()
+   * @param {string|null} logId - The log identifier from start()
    * @param {object} options - Additional options (statusCode, metadata)
    */
   async end(logId, options = {}) {
+    // If logId is null, it means the endpoint was excluded
+    if (!logId) {
+      return;
+    }
+
     const log = this.activeLogs.get(logId);
 
     if (!log) {
@@ -152,7 +187,14 @@ class RekLog {
    */
   middleware() {
     return (req, res, next) => {
+      // start() already checks if endpoint should be excluded
       const logId = this.start(req.path, req.method);
+
+      // If logId is null, endpoint is excluded - just continue
+      if (!logId) {
+        return next();
+      }
+
       const startTime = performance.now();
 
       const originalSend = res.send;

@@ -113,7 +113,74 @@ Initialize RekLog instance.
 | `debug` | boolean | `false` | Enable debug logging |
 | `retryAttempts` | number | `3` | Retry attempts on failure |
 | `retryDelay` | number | `1000` | Delay between retries (ms) |
-| `maskFields` | array | `[]` | Fields to mask |
+| `maskFields` | array | `[]` | Fields to mask in logs |
+| `excludeEndpoints` | array | `[]` | Endpoints to exclude from logging |
+
+---
+
+## Excluding Endpoints from Logging
+
+You can exclude specific endpoints from being logged using the `excludeEndpoints` option. This works for both **middleware** and **manual logging** (`start()/end()`).
+
+This is useful for:
+- Health check endpoints
+- Static file requests
+- Internal monitoring endpoints
+- Any endpoints that don't need logging
+
+### Basic Usage
+
+```javascript
+const logger = reklog.init('rkl_your_api_key', {
+  excludeEndpoints: ['/health', '/ping', '/metrics']
+});
+
+// Works with middleware
+app.use(logger.middleware());
+
+// Also works with manual logging
+const logId = logger.start('/health', 'GET'); // Returns null, won't log
+await logger.end(logId); // Safely ignores null logId
+```
+
+### Wildcard Patterns
+
+Use `*` to match multiple endpoints:
+
+```javascript
+const logger = reklog.init('rkl_your_api_key', {
+  excludeEndpoints: [
+    '/health',           // Exact match
+    '/api/internal/*',   // All endpoints starting with /api/internal/
+    '/static/*',         // All static file requests
+    '*/ping'             // Any endpoint ending with /ping
+  ]
+});
+```
+
+### Examples
+
+```javascript
+// Exclude health checks and static files
+const logger = reklog.init('rkl_your_api_key', {
+  excludeEndpoints: ['/health', '/ready', '/static/*', '/assets/*']
+});
+
+// Exclude admin and internal endpoints
+const logger = reklog.init('rkl_your_api_key', {
+  excludeEndpoints: ['/admin/*', '/internal/*', '*/debug']
+});
+
+// Combine with other options
+const logger = reklog.init('rkl_your_api_key', {
+  environment: 'production',
+  debug: false,
+  maskFields: ['password', 'token'],
+  excludeEndpoints: ['/health', '/metrics', '/static/*']
+});
+```
+
+**Note:** Excluded endpoints will not appear in your RekLog dashboard and won't count towards your request quota.
 
 ---
 
